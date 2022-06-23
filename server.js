@@ -1,4 +1,4 @@
-const express = require('express')
+/* const express = require('express')
 const app = express()
 const cors = require('cors')
 const {MongoClient, ObjectId} = require('mongodb')  //need object id pulled for this so its different from before
@@ -30,7 +30,7 @@ MongoClient.connect(dbConnectionStr)  //tells it to connect to this cluster etc 
     try {
         let result = await collection.aggregate([
             {
-                "$Search" :{                               //$means its a mongo command
+                "$search" :{                               //$means its a mongo command
                     "autocomplete":  {                    //mongo can also to wildcard and partial match searches, etc
                         "query" :`${request.query.query}`,             // 
                         "path" : "title",     //this links to html title labels?
@@ -45,6 +45,7 @@ MongoClient.connect(dbConnectionStr)  //tells it to connect to this cluster etc 
         response.send(result)  //names the result from query 'result'
     } catch (error) {
         response.status(500).send({message:error.message})   //this one sends back a message as an object
+        console.log(error)
     }
   })
 
@@ -65,4 +66,88 @@ app.get("/get/:id", async (request, response) => {          ///:id is a paramete
   //set up port to allow apps to connect to server
   app.listen(process.env.PORT || PORT, () => {
     console.log(`Server is running on port ${PORT}`)
-  })
+  }) */
+
+
+  const express = require('express')
+const app = express()
+const cors = require('cors')
+const {MongoClient, ObjectId } = require('mongodb')
+const { response } = require('express')
+const { request } = require('http')
+require('dotenv').config()
+const PORT = 8000
+
+let db,
+    dbConnectionStr = process.env.DB_STRING,
+    dbName = 'sample_mflix',
+    collection
+
+MongoClient.connect(dbConnectionStr)
+    .then(client => {
+        console.log(`Connected to database`)
+        db = client.db(dbName)
+        collection = db.collection('movies')
+    })
+
+app.use(express.urlencoded({extended : true}))
+app.use(express.json())
+app.use(cors())
+
+app.get("/search", async (request,response) => {
+    try {
+        let result = await collection.aggregate([
+            {
+                "$search" : {
+                    "autocomplete" : {
+                        "query": `${request.query.query}`,
+                        "path": "title",
+                        "fuzzy": {
+                            "maxEdits":2,
+                            "prefixLength": 3
+                        }
+                    }
+                }
+            }
+        ]).toArray()
+        //console.log(result)
+        response.send(result)
+    } catch (error) {
+        response.status(500).send({message: error.message})
+        //console.log(error)
+    }
+})
+
+app.get("/get/:id", async (request, response) => {
+    try {
+        let result = await collection.findOne({
+            "_id" : ObjectId(request.params.id)
+        })
+        response.send(result)
+    } catch (error) {
+        response.status(500).send({message: error.message})
+    }
+}
+)
+
+app.listen(process.env.PORT || PORT, () => {
+    console.log(`Server is running.`)
+})
+
+//THIS IS THE INDEX TO APPLY TO MONGODB MOVIES COLLECTION
+// {
+//     "mappings": {
+//         "dynamic": false,
+//         "fields": {
+//             "title": [
+//                 {
+//                     "foldDiacritics": false,
+//                     "maxGrams": 7,
+//                     "minGrams": 3,
+//                     "tokenization": "edgeGram",
+//                     "type": "autocomplete"
+//                 }
+//             ]
+//         }
+//     }
+// }

@@ -1,5 +1,5 @@
 
-$(document).ready(function () {
+/* $(document).ready(function () {
     $('#title').autocomplete({                     //targets input box from index.html. bracket because this is an object. autocomplete is built in jquery
         source: async function(request, response) {     //this is jquery language and is related to jquery links in index.html
             let data= await fetch(`http://localhost:8000/search?query=${request.term}`)  //here we are sending the search and triggering the server
@@ -29,4 +29,36 @@ $(document).ready(function () {
                 })
         }
     })  //this ends the $('#title').autocomplete line
+}) */
+
+$(document).ready(function () {
+    $('#title').autocomplete({
+        source: async function(request,response) {
+            let data= await fetch(`http://localhost:8000/search?query=${request.term}`)
+                    .then(results => results.json())
+                    .then(results => results.map(result => {
+                        return {
+                            label: result.title,
+                            value: result.title,
+                            id: result._id
+                        }
+                    }))
+                response(data)
+                //console.log(response)
+        },
+        minLength: 2,
+        select: function(event, ui) {
+            console.log(ui.item.id)
+            fetch(`http://localhost:8000/get/${ui.item.id}`)
+                .then(result => result.json())
+                .then(result => {
+                    $('#cast').empty()
+                    result.cast.forEach(cast =>
+                        {
+                            $("#cast").append(`<li>${cast}</li>`)
+                        })
+                        $('img').attr('src',result.poster)
+                })
+        }
+    })
 })
